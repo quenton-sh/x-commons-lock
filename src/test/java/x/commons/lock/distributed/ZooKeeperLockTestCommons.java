@@ -18,7 +18,7 @@ public class ZooKeeperLockTestCommons {
 	
 	@BeforeClass
 	public static void init() throws Exception {
-		DOMConfigurator.configure(ZooKeeperLockTest.class.getResource("/log4j.xml").getPath());
+		DOMConfigurator.configure(ZooKeeperLockTestCommons.class.getResource("/log4j.xml").getPath());
 		
 		String hosts = "localhost:2181";
 		int sessionTimeout = 2000;
