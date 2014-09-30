@@ -1,7 +1,7 @@
 package x.commons.lock;
 
 @SuppressWarnings("serial")
-public class LockException extends RuntimeException {
+public class LockException extends Exception {
 
 	public LockException() {
 		super();

@@ -1,4 +1,4 @@
-package x.commons.lock.local;
+package x.commons.lock.util;
 
 import org.apache.commons.collections4.map.LRUMap;
 

@@ -1,10 +1,8 @@
-package x.commons.lock.local;
+package x.commons.lock.util;
 
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
-
-import x.commons.lock.local.MutexPool;
 
 public class MutexPoolTest {
 

@@ -46,14 +46,6 @@ public class ZooKeeperLock extends AbstractReentrantLock {
 		}
 	}
 	
-	public void close() {
-		try {
-			this.zk.close();
-		} catch (Exception e) {
-			throw new LockException(e);
-		}
-	}
-	
 	private void createNodeForKey() throws Exception {
 		Stat stat = zk.exists(this.node, null);
 		if (stat == null) {
