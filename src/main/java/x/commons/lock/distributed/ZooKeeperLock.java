@@ -64,7 +64,7 @@ public class ZooKeeperLock extends AbstractReentrantLock {
 		logger.debug(String.format("Zookeeper ephemeral node '%s' created.", createdNode));
 		
 		synchronized (mutex) {
-			if (!this.checkState()) {
+			if (!this.ifNotFirstThenAddWatcher()) {
 				mutex.wait();
 			}
 			// 已获得全局锁
@@ -72,7 +72,8 @@ public class ZooKeeperLock extends AbstractReentrantLock {
 		}
 	}
 	
-	private final boolean checkState() throws Exception {
+	// 须保证此方法在 synchronized(mutex) {...} 中被调用
+	private final boolean ifNotFirstThenAddWatcher() throws Exception {
 		String previousNode = this.getPreviousNodeNameInQueue();
 		if (previousNode == null) {
 			return true;
@@ -82,16 +83,22 @@ public class ZooKeeperLock extends AbstractReentrantLock {
 			if (stat == null) {
 				// 可能代码从 zk.getChildren 执行到当前行这个过程中，前面的结点被删除了，当前结点有可能变成最大了，所以重新检查一遍
 				logger.debug("The node before me may be removed. Retry.");
-				return checkState();
+				return ifNotFirstThenAddWatcher();
 			}
 			return false;
 		}
 	}
 	
+	// 须保证此方法在 synchronized(mutex) {...} 中被调用
 	private String getPreviousNodeNameInQueue() throws Exception {
 		List<String> childrenNames = zk.getChildren(this.node, false);
 		if (childrenNames == null || childrenNames.size() == 0) {
 			throw new LockException(String.format("No child found for node '%s'.", this.node));
+		}
+		
+		if (childrenNames.size() == 1) {
+			// 子节点只有自己
+			return null;
 		}
 		
 		TreeMap<Long, String> treeMap = new TreeMap<Long, String>();
@@ -107,7 +114,7 @@ public class ZooKeeperLock extends AbstractReentrantLock {
 		}
 		if (mySeq == null) {
 			throw new LockException(
-					String.format("Child created for node '%s' but can't be found.", this.node));
+					String.format("Child created for node '%s' but can't be found. sessionId=%d", this.node, zk.getSessionId()));
 		}
 		Entry<Long, String> previous = treeMap.lowerEntry(mySeq);
 		if (previous == null) {
@@ -151,7 +158,7 @@ public class ZooKeeperLock extends AbstractReentrantLock {
 			if (event.getType() == org.apache.zookeeper.Watcher.Event.EventType.NodeDeleted) {
 				try {
 					synchronized(mutex) {
-						if (checkState()) {
+						if (ifNotFirstThenAddWatcher()) {
 							// 已获得全局锁
 							mutex.notify();
 						}
