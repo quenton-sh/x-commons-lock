@@ -10,11 +10,15 @@ public class ZooKeeperLockGlobalTest1 extends ZooKeeperLockTestCommons {
 	public static void main(String[] args) throws Exception {
 		String name = args[0];
 		long sleepTime = Long.parseLong(args[1]);
+		long waitTimeout = Long.parseLong(args[2]);
 		
 		init();
 		
 		System.out.println(name + " start.");
-		lock.lock();
+		if (!lock.lock(waitTimeout)) {
+			System.out.println(name + " timeout, quit.");
+			return;
+		}
 		doSomething("method once", sleepTime);
 		doSomething("method twice", sleepTime);
 		lock.unlock();

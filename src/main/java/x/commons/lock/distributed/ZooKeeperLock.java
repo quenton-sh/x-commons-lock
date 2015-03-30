@@ -3,8 +3,11 @@ package x.commons.lock.distributed;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.TreeMap;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooDefs;
@@ -13,21 +16,32 @@ import org.apache.zookeeper.data.Stat;
 
 import x.commons.lock.LockException;
 
+/**
+ * @NotThreadSafe
+ * 
+ * @author Quenton
+ */
 public class ZooKeeperLock extends AbstractReentrantLock {
 
 	private final ZooKeeper zk;
 	private final String node;
-	private final Object mutex = new byte[0];
 	
 	private Long mySeq = null;
-
+	private boolean isLocked = false;
+	
+	private final SynchronousQueue<byte[]> queue = new SynchronousQueue<byte[]>(true);
+	
 	public ZooKeeperLock(ZooKeeper zk, String nodePath) throws LockException {
-		this(zk, nodePath, "__DEFAULT__");
+		this(zk, nodePath, null);
 	}
 	
 	public ZooKeeperLock(ZooKeeper zk, String nodePath, String key) throws LockException {
 		try {
 			this.zk = zk;
+			
+			if (key == null) {
+				key = "__XCLZKL__"; // X Commons Lock Zookeeper Lock --> XCLZL
+			}
 			
 			StringBuilder sb = new StringBuilder(nodePath);
 			if (sb.charAt(sb.length() - 1) != '/') {
@@ -56,23 +70,47 @@ public class ZooKeeperLock extends AbstractReentrantLock {
 	}
 	
 	@Override
-	protected void lockGlobal() throws Exception {
+	protected boolean lockGlobal(long maxWaitTimeMillis) throws Exception {
+		if (isLocked) {
+			throw new IllegalStateException("Already locked!");
+		}
+		
+		long waitTimeMillis = maxWaitTimeMillis;
+		long startTs = System.currentTimeMillis();
 		String createdNode = zk.create(this.buildPathForNewNode(), 
 				null, 
 				ZooDefs.Ids.OPEN_ACL_UNSAFE, 
 				CreateMode.EPHEMERAL_SEQUENTIAL);
 		logger.debug(String.format("Zookeeper ephemeral node '%s' created.", createdNode));
-		
-		synchronized (mutex) {
-			if (!this.ifNotFirstThenAddWatcher()) {
-				mutex.wait();
+		if (waitTimeMillis > 0) {
+			waitTimeMillis -= System.currentTimeMillis() - startTs;
+			if (waitTimeMillis <= 0) {
+				// 超时
+				deleteNodeWithLogging(createdNode);
+				return false;
 			}
-			// 已获得全局锁
-			logger.debug(String.format("Thread %d just acquired the global lock.", Thread.currentThread().getId()));
 		}
+		
+		startTs = System.currentTimeMillis();
+		if (!this.ifNotFirstThenAddWatcher()) {
+			if (waitTimeMillis > 0) {
+				waitTimeMillis -= System.currentTimeMillis() - startTs;
+				if (waitTimeMillis <= 0 || queue.poll(waitTimeMillis, TimeUnit.MILLISECONDS) == null) {
+					// 超时
+					deleteNodeWithLogging(createdNode);
+					return false;
+				}
+			} else {
+				queue.take();
+			}
+		}
+		// 已获得全局锁
+		isLocked = true;
+		logger.debug(String.format("Thread %d just acquired the global lock.", Thread.currentThread().getId()));
+		
+		return true;
 	}
 	
-	// 须保证此方法在 synchronized(mutex) {...} 中被调用
 	private final boolean ifNotFirstThenAddWatcher() throws Exception {
 		String previousNode = this.getPreviousNodeNameInQueue();
 		if (previousNode == null) {
@@ -89,7 +127,6 @@ public class ZooKeeperLock extends AbstractReentrantLock {
 		}
 	}
 	
-	// 须保证此方法在 synchronized(mutex) {...} 中被调用
 	private String getPreviousNodeNameInQueue() throws Exception {
 		List<String> childrenNames = zk.getChildren(this.node, false);
 		if (childrenNames == null || childrenNames.size() == 0) {
@@ -124,13 +161,28 @@ public class ZooKeeperLock extends AbstractReentrantLock {
 			return previous.getValue();
 		}
 	}
+	
+	private void deleteNodeWithLogging(long seq) throws InterruptedException, KeeperException {
+		String node = this.buildPathForNode(seq);
+		zk.delete(node, -1);
+		logger.debug(String.format("Zookeeper ephemeral node '%s' deleted.", node));
+	}
+	
+	private void deleteNodeWithLogging(String node) throws InterruptedException, KeeperException {
+		zk.delete(node, -1);
+		logger.debug(String.format("Zookeeper ephemeral node '%s' deleted.", node));
+	}
 
 	@Override
 	protected void unlockGlobal() throws Exception {
 		if (mySeq == null) {
-			throw new LockException("Illegal state: can't get seq for the node to be removed.");
+			throw new IllegalStateException("Can't get seq for the node to be removed.");
 		}
-		zk.delete(this.buildPathForNode(this.mySeq), -1);
+		if (!isLocked) {
+			throw new IllegalStateException("Already unlocked!");
+		}
+		deleteNodeWithLogging(mySeq);
+		isLocked = false;
 	}
 	
 	private String buildPathForNewNode() {
@@ -158,11 +210,9 @@ public class ZooKeeperLock extends AbstractReentrantLock {
 					event.getPath(), event.getState().toString(), event.getType().toString()));
 			if (event.getType() == org.apache.zookeeper.Watcher.Event.EventType.NodeDeleted) {
 				try {
-					synchronized(mutex) {
-						if (ifNotFirstThenAddWatcher()) {
-							// 已获得全局锁
-							mutex.notify();
-						}
+					if (ifNotFirstThenAddWatcher()) {
+						// 已获得全局锁
+						queue.put(new byte[0]);
 					}
 				} catch (Exception e) {
 					logger.error(e.toString(), e);

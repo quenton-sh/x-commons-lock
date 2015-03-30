@@ -10,6 +10,7 @@ public class ZookeeperLockTest extends ZooKeeperLockTestCommons {
 
 	@Test
 	public void test1() throws Exception {
+		// one thread, no timeout
 		assertTrue(!lock.isLocked());
 		
 		lock.lock();
@@ -21,8 +22,17 @@ public class ZookeeperLockTest extends ZooKeeperLockTestCommons {
 	
 	@Test
 	public void test2() throws Exception {
-		Thread t1 = new Thread(new TestRunnable("R1", 4000, lock));
-		Thread t2 = new Thread(new TestRunnable("R2", 10, lock));
+		// one thread, with timeout
+		boolean ret = lock.lock(1);
+		assertTrue(!ret);
+		assertTrue(!lock.isLocked());
+	}
+	
+	@Test
+	public void test3() throws Exception {
+		// two threads, no timeout
+		Thread t1 = new Thread(new TestRunnable("R1", 4000, lock, 0));
+		Thread t2 = new Thread(new TestRunnable("R2", 10, lock, 0));
 		
 		t1.start();
 		Thread.sleep(5);
@@ -33,20 +43,42 @@ public class ZookeeperLockTest extends ZooKeeperLockTestCommons {
 		System.out.println("main thread quit.");
 	}
 	
+	@Test
+	public void test4() throws Exception {
+		// two threads, with timeout
+		Thread t1 = new Thread(new TestRunnable("R1", 4000, lock, 0));
+		Thread t2 = new Thread(new TestRunnable("R2", 10, lock, 1000));
+		
+		t1.start();
+		Thread.sleep(5);
+		t2.start();
+		
+		t1.join();
+		t2.join();
+		System.out.println("main thread quit.");
+	}
+	
+	
+	
 	private static class TestRunnable implements Runnable {
 		private String name;
 		private long sleepTime;
 		private ZooKeeperLock lock;
-		public TestRunnable(String name, long sleepTime, ZooKeeperLock lock) {
+		private long waitTimeout;
+		public TestRunnable(String name, long sleepTime, ZooKeeperLock lock, long waitTimeout) {
 			this.name = name;
 			this.sleepTime = sleepTime;
 			this.lock = lock;
+			this.waitTimeout = waitTimeout;
 		}
 		@Override
 		public void run() {
 			System.out.println(String.format("Job-%s start.", name));
 			try {
-				this.lock.lock();
+				if (!this.lock.lock(waitTimeout)) {
+					System.out.println(String.format("Job-%s timeout.", name));
+					return;
+				}
 				
 				try {
 					Thread.sleep(sleepTime);
@@ -54,9 +86,16 @@ public class ZookeeperLockTest extends ZooKeeperLockTestCommons {
 					e.printStackTrace();
 				}
 				
-				this.lock.unlock();
 			} catch (LockException e) {
 				e.printStackTrace(System.err);
+			} finally {
+				if (lock.isLocked()) {
+					try {
+						lock.unlock();
+					} catch (LockException e) {
+						
+					}
+				}
 			}
 			
 			System.out.println(String.format("Job-%s finished.", name));
