@@ -68,7 +68,7 @@ public class ZooKeeperLock extends AbstractReentrantLock {
 				mutex.wait();
 			}
 			// 已获得全局锁
-			logger.debug(String.format("Thread %d acquired the global lock.", Thread.currentThread().getId()));
+			logger.debug(String.format("Thread %d just acquired the global lock.", Thread.currentThread().getId()));
 		}
 	}
 	
@@ -98,6 +98,7 @@ public class ZooKeeperLock extends AbstractReentrantLock {
 		
 		if (childrenNames.size() == 1) {
 			// 子节点只有自己
+			mySeq = this.parseSessionIdAndSeqForNode(childrenNames.get(0))[1];
 			return null;
 		}
 		
