@@ -1,6 +1,7 @@
 package x.commons.lock.distributed;
 
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import org.junit.Test;
 
@@ -12,12 +13,33 @@ public class ZookeeperLockTest extends ZooKeeperLockTestCommons {
 	public void test1() throws Exception {
 		// one thread, no timeout
 		assertTrue(!lock.isLocked());
+		assertTrue(!lock.isHeldByCurrentThread());
 		
 		lock.lock();
 		assertTrue(lock.isLocked());
+		assertTrue(lock.isHeldByCurrentThread());
+		assertTrue(lock.getHoldCount() == 1);
+		
+		lock.lock();
+		assertTrue(lock.isLocked());
+		assertTrue(lock.isHeldByCurrentThread());
+		assertTrue(lock.getHoldCount() == 2);
+		
+		lock.unlock();
+		assertTrue(lock.isLocked());
+		assertTrue(lock.isHeldByCurrentThread());
+		assertTrue(lock.getHoldCount() == 1);
 		
 		lock.unlock();
 		assertTrue(!lock.isLocked());
+		assertTrue(!lock.isHeldByCurrentThread());
+		assertTrue(lock.getHoldCount() == 0);
+
+		try {
+			lock.unlock();
+			fail();
+		} catch (LockException e) {
+		}
 	}
 	
 	@Test
@@ -57,8 +79,6 @@ public class ZookeeperLockTest extends ZooKeeperLockTestCommons {
 		t2.join();
 		System.out.println("main thread quit.");
 	}
-	
-	
 	
 	private static class TestRunnable implements Runnable {
 		private String name;

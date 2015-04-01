@@ -16,8 +16,6 @@ public abstract class AbstractReentrantLock implements SimpleLock {
 	private final ReentrantLock reentrantLock = new ReentrantLock(true);
 	private final ThreadLocal<byte[]> globalLockStatus = new ThreadLocal<byte[]>();
 	
-	private volatile boolean isLocked = false;
-	
 	@Override
 	public void lock() throws LockException {
 		this.lock(0);
@@ -45,7 +43,7 @@ public abstract class AbstractReentrantLock implements SimpleLock {
 					return false;
 				}
 			}
-			logger.debug(String.format("Thread %d acquired the local lock.", Thread.currentThread().getId()));
+			logger.debug(String.format("Thread %d acquired the local lock, hold count=%d.", Thread.currentThread().getId(), reentrantLock.getHoldCount()));
 			
 			// 当前线程 代表本进程 与其他进程竞争全局锁
 			if (globalLockStatus.get() == null) {
@@ -67,8 +65,6 @@ public abstract class AbstractReentrantLock implements SimpleLock {
 				logger.debug(String.format("Thread %d already holds the global lock.", Thread.currentThread().getId()));
 			}
 			
-			isLocked = true;
-			
 			return true;
 		} catch (Exception e) {
 			if (e instanceof LockException) {
@@ -85,7 +81,7 @@ public abstract class AbstractReentrantLock implements SimpleLock {
 		}
 		*/
 	}
-
+	
 	@Override
 	public void unlock() throws LockException {
 		/*
@@ -93,49 +89,49 @@ public abstract class AbstractReentrantLock implements SimpleLock {
 		 * 1 只能解自己持有的锁
 		 * 2 解锁后须保持“一致”状态，即本地锁与全局锁要么同时持有，要么同时放弃
 		 */
-		
 		if (!reentrantLock.isHeldByCurrentThread()) {
 			// 当前线程未持有本地锁（根据加锁代码，此时也不会持有全局锁）：违反原则1，禁止解锁
 			throw new LockException(String.format("Current thread %d doesn't hold the local lock.", Thread.currentThread().getId()));
-		} else if (globalLockStatus.get() == null) {
-			// 当前线程持有本地锁但未持有全局锁：仅解除本地锁，达到“一致”状态
-			try {
-				this.isLocked = false; // 此变量须在解本地锁之前赋值
-				unlockLocalWithLogging();
-			} catch (IllegalMonitorStateException e) {
-				// just ignore
-			}
-			throw new LockException(String.format("Current thread %d doesn't hold the global lock.", Thread.currentThread().getId()));
-		} else {
-			// 当前线程同时持有本地锁和全局锁：只有解全局锁成功才解本地锁
-			try {
+		}
+		// 只有解全局锁成功才解本地锁
+		try {
+			if (reentrantLock.getHoldCount() <= 1) {
+				// 本地锁被多次重入的情况下，仅对本地锁减少重入次数，不对全局锁做改动
 				logger.debug(String.format("Thread %d try to release the global lock...", Thread.currentThread().getId()));
 				this.unlockGlobal();
 				logger.debug(String.format("Thread %d released the global lock.", Thread.currentThread().getId()));
 				
 				globalLockStatus.remove();
 				logger.debug(String.format("Thread %d doesn't cache its global lock any more.", Thread.currentThread().getId()));
-				
-				this.isLocked = false; // 此变量须在解本地锁之前赋值
-				this.unlockLocalWithLogging();
-			} catch (Exception e) {
-				if (e instanceof LockException) {
-					throw (LockException) e;
-				} else {
-					throw new LockException(e);
-				}
+			}
+			this.unlockLocalWithLogging();
+		} catch (Exception e) {
+			if (e instanceof LockException) {
+				throw (LockException) e;
+			} else {
+				throw new LockException(e);
 			}
 		}
 	}
 	
 	private void unlockLocalWithLogging() {
 		reentrantLock.unlock();
-		logger.debug(String.format("Thread %d released the local lock.", Thread.currentThread().getId()));
+		logger.debug(String.format("Thread %d released the local lock, hold count=%d.", Thread.currentThread().getId(), reentrantLock.getHoldCount()));
 	}
 	
 	@Override
 	public boolean isLocked() {
-		return this.isLocked;
+		return reentrantLock.isLocked();
+	}
+	
+	@Override
+	public int getHoldCount() {
+		return reentrantLock.getHoldCount();
+	}
+	
+	@Override
+	public boolean isHeldByCurrentThread() {
+		return reentrantLock.isHeldByCurrentThread();
 	}
 	
 	protected abstract boolean lockGlobal(long waitTimeMillis) throws Exception;

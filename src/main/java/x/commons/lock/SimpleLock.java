@@ -11,4 +11,8 @@ public interface SimpleLock {
 	
 	public boolean isLocked();
 	
+	public int getHoldCount();
+	
+	public boolean isHeldByCurrentThread();
+	
 }
