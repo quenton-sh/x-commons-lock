@@ -9,16 +9,47 @@ import org.junit.Test;
 
 import x.commons.lock.LockException;
 
-public class ZookeeperLockTest extends ZooKeeperLockTestCommons {
+public class RedisLockTest extends RedisLockTestCommons {
+	
+	protected static long autoReleseTimeMillis = 10000;
 	
 	@BeforeClass
 	public static void init() throws Exception {
-		_init();
+		_init(autoReleseTimeMillis);
 	}
 	
 	@AfterClass
 	public static void cleanup() throws Exception {
 		_cleanup();
+	}
+	
+	@Test
+	public void testConstruct() {
+		@SuppressWarnings("unused")
+		RedisLock sug = null;
+		try {
+			sug = new RedisLock(null, null, 5000, 3, 1);
+			fail();
+		} catch (IllegalArgumentException e) {
+			// pass
+			System.out.println(e.getMessage());
+		}
+		
+		try {
+			sug = new RedisLock(null, null, 5000, 0, 0);
+			fail();
+		} catch (IllegalArgumentException e) {
+			// pass
+			System.out.println(e.getMessage());
+		}
+		
+		try {
+			sug = new RedisLock(null, null, 5000, -1, -1);
+			fail();
+		} catch (IllegalArgumentException e) {
+			// pass
+			System.out.println(e.getMessage());
+		}
 	}
 
 	@Test
@@ -95,9 +126,9 @@ public class ZookeeperLockTest extends ZooKeeperLockTestCommons {
 	private static class TestRunnable implements Runnable {
 		private String name;
 		private long sleepTime;
-		private ZooKeeperLock lock;
+		private RedisLock lock;
 		private long waitTimeout;
-		public TestRunnable(String name, long sleepTime, ZooKeeperLock lock, long waitTimeout) {
+		public TestRunnable(String name, long sleepTime, RedisLock lock, long waitTimeout) {
 			this.name = name;
 			this.sleepTime = sleepTime;
 			this.lock = lock;

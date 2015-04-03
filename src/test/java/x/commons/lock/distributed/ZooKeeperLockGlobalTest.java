@@ -1,39 +1,37 @@
 package x.commons.lock.distributed;
 
 /**
- * 测试jvm进程间同步-设置锁超时的效果
+ * 测试jvm进程间的同步效果
  * @author Quenton
  *
  */
-public class ZooKeeperLockGlobalTest2 extends ZooKeeperLockTestCommons {
-	
-	/*
-	 
-	private static final long lockTimeout = 5000;
+public class ZooKeeperLockGlobalTest extends ZooKeeperLockTestCommons {
 
-	
 	public static void main(String[] args) throws Exception {
 		String name = args[0];
 		long sleepTime = Long.parseLong(args[1]);
+		long waitTimeout = Long.parseLong(args[2]);
 		
-		init();
-		ZooKeeperLock zlock = (ZooKeeperLock) lock;
-		zlock.setLockTimeout(lockTimeout); // 设置锁超时时间
+		_init();
 		
 		System.out.println(name + " start.");
-		zlock.lock();
+		if (!lock.lock(waitTimeout)) {
+			System.out.println(name + " timeout, quit.");
+			return;
+		}
 		doSomething("method once", sleepTime);
-		zlock.unlock();
+		doSomething("method twice", sleepTime);
+		lock.unlock();
 		System.out.println(name + " finished.");
 		
-		cleanup();
+		_cleanup();
 	}
 	
 	public static void doSomething(String name, long sleepTime) throws Exception {
 		System.out.println("Entering " + name + ".");
+		lock.lock();
 		Thread.sleep(sleepTime);
 		System.out.println("Quiting " + name + ".");
+		lock.unlock();
 	}
-	
-	 */
 }

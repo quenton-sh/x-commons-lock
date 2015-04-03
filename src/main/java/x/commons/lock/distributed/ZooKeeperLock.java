@@ -31,17 +31,10 @@ public class ZooKeeperLock extends AbstractReentrantLock {
 	
 	private final SynchronousQueue<byte[]> queue = new SynchronousQueue<byte[]>(true);
 	
-	public ZooKeeperLock(ZooKeeper zk, String nodePath) throws LockException {
-		this(zk, nodePath, null);
-	}
 	
 	public ZooKeeperLock(ZooKeeper zk, String nodePath, String key) throws LockException {
 		try {
 			this.zk = zk;
-			
-			if (key == null) {
-				key = "__XCLZKL__"; // X Commons Lock Zookeeper Lock --> XCLZL
-			}
 			
 			StringBuilder sb = new StringBuilder(nodePath);
 			if (sb.charAt(sb.length() - 1) != '/') {
@@ -61,11 +54,19 @@ public class ZooKeeperLock extends AbstractReentrantLock {
 	}
 	
 	private void createNodeForKey() throws Exception {
-		Stat stat = zk.exists(this.node, null);
-		if (stat == null) {
-			String createdNode = zk.create(this.node, null,
-					ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-			logger.info(String.format("Zookeeper persistent node '%s' created.", createdNode));
+		String[] pathSec = this.node.substring(1).split("\\/"); // 去除前缀"/"后再按"/"分割
+		for (int i = 0; i < pathSec.length; i++) {
+			StringBuilder sb = new StringBuilder();
+			for (int j = 0; j <= i; j++) {
+				sb.append("/" + pathSec[j]);
+			}
+			String path = sb.toString();
+			Stat stat = zk.exists(path, null);
+			if (stat == null) {
+				String createdNode = zk.create(path, null,
+						ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+				logger.info(String.format("Zookeeper persistent node '%s' created.", createdNode));
+			}
 		}
 	}
 	
