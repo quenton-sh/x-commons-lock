@@ -6,13 +6,15 @@ package x.commons.lock.distributed;
  *
  */
 public class ZooKeeperLockGlobalTest extends ZooKeeperLockTestCommons {
+	
+	private static String nodePath = "/tmp/locktest";
 
 	public static void main(String[] args) throws Exception {
 		String name = args[0];
 		long sleepTime = Long.parseLong(args[1]);
 		long waitTimeout = Long.parseLong(args[2]);
 		
-		_init();
+		_init(nodePath);
 		
 		System.out.println(name + " start.");
 		if (!lock.lock(waitTimeout)) {

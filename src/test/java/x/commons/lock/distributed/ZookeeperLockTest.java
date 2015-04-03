@@ -11,9 +11,11 @@ import x.commons.lock.LockException;
 
 public class ZookeeperLockTest extends ZooKeeperLockTestCommons {
 	
+	private static String nodePath = "/tmp/locktest";
+	
 	@BeforeClass
 	public static void init() throws Exception {
-		_init();
+		_init(nodePath);
 	}
 	
 	@AfterClass

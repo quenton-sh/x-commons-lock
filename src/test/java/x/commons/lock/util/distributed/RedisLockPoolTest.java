@@ -8,15 +8,15 @@ import org.junit.Test;
 
 import x.commons.lock.LockException;
 import x.commons.lock.SimpleLock;
-import x.commons.lock.distributed.ZooKeeperLockTestCommons;
+import x.commons.lock.distributed.RedisLockTestCommons;
 
-public class ZooKeeperLockPoolTest extends ZooKeeperLockTestCommons {
+public class RedisLockPoolTest extends RedisLockTestCommons {
 	
-	private static String nodePath = "/tmp/locktest";
+	private static int autoReleaseTimeMillis = 30000;
 	
 	@BeforeClass
 	public static void init() throws Exception {
-		_init(nodePath);
+		_init(autoReleaseTimeMillis);
 	}
 	
 	@AfterClass
@@ -26,7 +26,7 @@ public class ZooKeeperLockPoolTest extends ZooKeeperLockTestCommons {
 
 	@Test
 	public void getLock() throws LockException {
-		ZooKeeperLockPool sug = new ZooKeeperLockPool(zk, nodePath, 1);
+		RedisLockPool sug = new RedisLockPool(jedisPool, autoReleaseTimeMillis, 1);
 		
 		SimpleLock lock1 = sug.getLock("key1");
 		SimpleLock lock2 = sug.getLock("key2");
@@ -35,7 +35,7 @@ public class ZooKeeperLockPoolTest extends ZooKeeperLockTestCommons {
 		SimpleLock anotherLock1 = sug.getLock("key1");
 		assertTrue(lock1 != anotherLock1);
 		
-		sug = new ZooKeeperLockPool(zk, nodePath, 5);
+		sug = new RedisLockPool(jedisPool, autoReleaseTimeMillis, 5);
 		lock1 = sug.getLock("key1");
 		lock2 = sug.getLock("key2");
 		assertTrue(lock1 != lock2);
@@ -49,7 +49,7 @@ public class ZooKeeperLockPoolTest extends ZooKeeperLockTestCommons {
 	 */
 	@Test
 	public void test1() throws Exception {
-		ZooKeeperLockPool sug = new ZooKeeperLockPool(zk, nodePath, 5);
+		RedisLockPool sug = new RedisLockPool(jedisPool, autoReleaseTimeMillis, 5);
 		
 		// R1应该不阻塞R2
 		Thread t1 = new Thread(new TestRunnable("R1", "key1", 4000, sug));
@@ -70,7 +70,7 @@ public class ZooKeeperLockPoolTest extends ZooKeeperLockTestCommons {
 	 */
 	@Test
 	public void test2() throws Exception {
-		ZooKeeperLockPool sug = new ZooKeeperLockPool(zk, nodePath, 5);
+		RedisLockPool sug = new RedisLockPool(jedisPool, autoReleaseTimeMillis, 5);
 		
 		// R1应该阻塞住R2
 		Thread t1 = new Thread(new TestRunnable("R3", "key1", 4000, sug));
@@ -89,8 +89,8 @@ public class ZooKeeperLockPoolTest extends ZooKeeperLockTestCommons {
 		private String name;
 		private String key;
 		private long sleepTime;
-		private ZooKeeperLockPool lockPool;
-		public TestRunnable(String name, String key, long sleepTime, ZooKeeperLockPool lockPool) {
+		private RedisLockPool lockPool;
+		public TestRunnable(String name, String key, long sleepTime, RedisLockPool lockPool) {
 			this.name = name;
 			this.key = key;
 			this.sleepTime = sleepTime;

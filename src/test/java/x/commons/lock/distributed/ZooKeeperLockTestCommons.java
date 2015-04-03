@@ -14,7 +14,7 @@ public class ZooKeeperLockTestCommons {
 	protected static ZooKeeper zk;
 	protected static ZooKeeperLock lock;
 	
-	protected static void _init() throws Exception {
+	protected static void _init(String nodePath) throws Exception {
 		DOMConfigurator.configure(ZooKeeperLockTestCommons.class.getResource("/log4j.xml").getPath());
 		
 		String hosts = "localhost:2181";
@@ -30,7 +30,7 @@ public class ZooKeeperLockTestCommons {
 		});
 		connectedSignal.await(5, TimeUnit.SECONDS);
 		
-		lock = new ZooKeeperLock(zk, "/tmp/locktest", "testkey");
+		lock = new ZooKeeperLock(zk, nodePath, "testkey");
 	}
 	
 	protected static void _cleanup() throws Exception {
