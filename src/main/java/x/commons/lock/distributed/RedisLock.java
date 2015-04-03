@@ -50,7 +50,6 @@ public class RedisLock extends AbstractReentrantLock {
 		try {
 			jedis = jedisPool.getResource();
 			long waitTimeMillis  = maxWaitTimeMillis;
-			long retryDelayMillis = this.getRetryDelayMillis();
 			boolean acquired = false;
 			do {
 				long startTs = System.currentTimeMillis();
@@ -66,6 +65,7 @@ public class RedisLock extends AbstractReentrantLock {
 						return false;
 					}
 				}
+				long retryDelayMillis = this.getRetryDelayMillis();
 				Thread.sleep(retryDelayMillis);
 			} while(true);
 		} finally {
