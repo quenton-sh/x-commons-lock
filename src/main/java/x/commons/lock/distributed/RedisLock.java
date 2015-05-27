@@ -7,10 +7,12 @@ import org.apache.commons.io.IOUtils;
 
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
+import redis.clients.jedis.Transaction;
 
 public class RedisLock extends AbstractReentrantLock {
 	
 	private final JedisPool jedisPool;
+	private final String password;
 	private final String key;
 	private final long autoReleaseTimeMillis;
 	private final int retryMinDelayMillis;
@@ -18,19 +20,27 @@ public class RedisLock extends AbstractReentrantLock {
 	private final Random random = new Random();
 	private final String id = UUID.randomUUID().toString();
 	
-	public RedisLock(JedisPool jedisPool, String key, long autoReleaseTimeMillis) {
-		this(jedisPool, key, autoReleaseTimeMillis, 1, 1);
+	/**
+	 * 获取锁失败，重试的延时时间为5ms
+	 * @param jedisPool
+	 * @param password
+	 * @param key
+	 * @param autoReleaseTimeMillis
+	 */
+	public RedisLock(JedisPool jedisPool, String password, String key, long autoReleaseTimeMillis) {
+		this(jedisPool, password, key, autoReleaseTimeMillis, 5, 5);
 	}
 	
 	/**
 	 * 
 	 * @param jedisPool
+	 * @param password
 	 * @param key
 	 * @param autoReleaseTimeMillis
-	 * @param retryDelayMillis 获取锁失败，重试的延时时间下限
-	 * @param retryMaxDelayMillis 获取锁失败，重试的延时时间上限
+	 * @param retryDelayMillis 获取锁失败，重试的延时时间下限(ms)
+	 * @param retryMaxDelayMillis 获取锁失败，重试的延时时间上限(ms)
 	 */
-	public RedisLock(JedisPool jedisPool, String key, long autoReleaseTimeMillis, int retryMinDelayMillis, int retryMaxDelayMillis) {
+	public RedisLock(JedisPool jedisPool, String password, String key, long autoReleaseTimeMillis, int retryMinDelayMillis, int retryMaxDelayMillis) {
 		if (retryMaxDelayMillis < retryMinDelayMillis) {
 			throw new IllegalArgumentException("The value of 'retryMaxDelayMillis' must be greater than or equal to that of 'retryMinDelayMillis'.");
 		}
@@ -38,6 +48,7 @@ public class RedisLock extends AbstractReentrantLock {
 			throw new IllegalArgumentException("Neither 'retryMinDelayMillis' nor 'retryMaxDelayMillis' could be less than or equal to zero.");
 		}
 		this.jedisPool = jedisPool;
+		this.password = password;
 		this.key = key;
 		this.autoReleaseTimeMillis = autoReleaseTimeMillis;
 		this.retryMinDelayMillis = retryMinDelayMillis;
@@ -48,7 +59,7 @@ public class RedisLock extends AbstractReentrantLock {
 	protected boolean lockGlobal(long maxWaitTimeMillis) throws Exception {
 		Jedis jedis = null;
 		try {
-			jedis = jedisPool.getResource();
+			jedis = this.getJedis();
 			long waitTimeMillis  = maxWaitTimeMillis;
 			boolean acquired = false;
 			do {
@@ -77,14 +88,15 @@ public class RedisLock extends AbstractReentrantLock {
 	protected void unlockGlobal() throws Exception {
 		Jedis jedis = null;
 		try {
-			jedis = jedisPool.getResource();
-			// 删除锁结点
+			jedis = this.getJedis();
+			// 删除锁结点，加乐观锁
+			jedis.watch(this.key);
 			String val = jedis.get(this.key);
+			Transaction t = jedis.multi();
 			if (val != null && val.equals(this.id)) {
-				// 这里有并发问题：get后如果key expire掉，并且被其他进程set获得锁，则此命令将删除其他进程持有的锁
-				// Redisson源码中也有这个问题，不使用Transaction情况下无解
-				jedis.del(this.key);
+				t.del(this.key);
 			}
+			t.exec(); // 无需检查结果，事务失败表示锁已过期，或已被其他进程持有
 		} finally {
 			IOUtils.closeQuietly(jedis);
 		}
@@ -96,5 +108,13 @@ public class RedisLock extends AbstractReentrantLock {
 		} else {
 			return this.retryMinDelayMillis + this.random.nextInt(this.retryMaxDelayMillis - this.retryMinDelayMillis);
 		}
+	}
+	
+	private Jedis getJedis() {
+		Jedis jedis = this.jedisPool.getResource();
+		if (this.password != null) {
+			jedis.auth(this.password);
+		}
+		return jedis;
 	}
 }

@@ -26,7 +26,7 @@ public class RedisLockPoolTest extends RedisLockTestCommons {
 
 	@Test
 	public void getLock() throws LockException {
-		RedisLockPool sug = new RedisLockPool(jedisPool, autoReleaseTimeMillis, 1);
+		RedisLockPool sug = new RedisLockPool(jedisPool, PASSWORD, autoReleaseTimeMillis, 1);
 		
 		SimpleLock lock1 = sug.getLock("key1");
 		SimpleLock lock2 = sug.getLock("key2");
@@ -35,7 +35,7 @@ public class RedisLockPoolTest extends RedisLockTestCommons {
 		SimpleLock anotherLock1 = sug.getLock("key1");
 		assertTrue(lock1 != anotherLock1);
 		
-		sug = new RedisLockPool(jedisPool, autoReleaseTimeMillis, 5);
+		sug = new RedisLockPool(jedisPool, PASSWORD, autoReleaseTimeMillis, 5);
 		lock1 = sug.getLock("key1");
 		lock2 = sug.getLock("key2");
 		assertTrue(lock1 != lock2);
@@ -49,7 +49,7 @@ public class RedisLockPoolTest extends RedisLockTestCommons {
 	 */
 	@Test
 	public void test1() throws Exception {
-		RedisLockPool sug = new RedisLockPool(jedisPool, autoReleaseTimeMillis, 5);
+		RedisLockPool sug = new RedisLockPool(jedisPool, PASSWORD, autoReleaseTimeMillis, 5);
 		
 		// R1应该不阻塞R2
 		Thread t1 = new Thread(new TestRunnable("R1", "key1", 4000, sug));
@@ -70,7 +70,7 @@ public class RedisLockPoolTest extends RedisLockTestCommons {
 	 */
 	@Test
 	public void test2() throws Exception {
-		RedisLockPool sug = new RedisLockPool(jedisPool, autoReleaseTimeMillis, 5);
+		RedisLockPool sug = new RedisLockPool(jedisPool, PASSWORD, autoReleaseTimeMillis, 5);
 		
 		// R1应该阻塞住R2
 		Thread t1 = new Thread(new TestRunnable("R3", "key1", 4000, sug));

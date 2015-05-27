@@ -11,6 +11,11 @@ public class RedisLockTestCommons {
 	
 	protected static JedisPool jedisPool;
 	protected static RedisLock lock;
+	
+	protected static final String PASSWORD = "redis123";
+	protected static final String HOST = "127.0.0.1";
+	protected static final int PORT = 6379;
+	
 
 	protected static void _init(long autoReleaseTimeMillis) {
 		DOMConfigurator.configure(RedisLockTestCommons.class.getResource("/log4j.xml").getPath());
@@ -18,8 +23,8 @@ public class RedisLockTestCommons {
 		config.setMaxTotal(5);
 		config.setMaxIdle(5);
 		config.setMinIdle(5);
-		jedisPool = new JedisPool(config, "127.0.0.1", 2468);
-		lock = new RedisLock(jedisPool, "testkey", autoReleaseTimeMillis);
+		jedisPool = new JedisPool(config, HOST, PORT);
+		lock = new RedisLock(jedisPool, PASSWORD, "testkey", autoReleaseTimeMillis);
 		// 激活池中连接
 		activatePool();
 	}
@@ -29,6 +34,7 @@ public class RedisLockTestCommons {
 			Jedis jedis = null;
 			try {
 				jedis = jedisPool.getResource();
+				jedis.auth(PASSWORD);
 				jedis.setex("__tmpkey" + i, 1, "tmpvalue" + i);
 			} finally {
 				IOUtils.closeQuietly(jedis);
