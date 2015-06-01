@@ -72,15 +72,6 @@ public class RedisLock extends AbstractReentrantLock {
 			
 			boolean acquired = false;
 			do {
-				String ret = jedis.set(this.key, this.id, "NX", "PX", this.autoReleaseTimeMillis); // set if not exist
-				acquired = "OK".equals(ret);
-				if (acquired) {
-					// 已获得全局锁
-					isLocked = true;
-					logger.debug(String.format("Thread %d just acquired the global lock.", Thread.currentThread().getId()));
-					return true;
-				}
-				
 				long ellapsed = System.currentTimeMillis() - startTs;
 				long waitTimeLeft = maxWaitTimeMillis - ellapsed;
 //				long waitTimeLeftPrint = waitTimeLeft < 0 ? 0 : waitTimeLeft;
@@ -90,6 +81,15 @@ public class RedisLock extends AbstractReentrantLock {
 						// 超时
 						return false;
 					}
+				}
+				
+				String ret = jedis.set(this.key, this.id, "NX", "PX", this.autoReleaseTimeMillis); // set if not exist
+				acquired = "OK".equals(ret);
+				if (acquired) {
+					// 已获得全局锁
+					isLocked = true;
+					logger.debug(String.format("Thread %d just acquired the global lock.", Thread.currentThread().getId()));
+					return true;
 				}
 				
 				long retryDelayMillis = this.getRetryDelayMillis();
