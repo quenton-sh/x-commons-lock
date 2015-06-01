@@ -3,7 +3,8 @@ package x.commons.lock.distributed;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.TreeMap;
-import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.zookeeper.CreateMode;
@@ -17,8 +18,13 @@ import org.apache.zookeeper.data.Stat;
 import x.commons.lock.LockException;
 
 /**
- * @NotThreadSafe
+ * Zookeeper分布式锁
+ * <p>公平锁</p>
+ * <p>锁不会超时自动释放</p>
+ * <p>尝试获取锁时等待超时则获取失败</p>
  * 
+ * 
+ * @NotThreadSafe
  * @author Quenton
  */
 public class ZooKeeperLock extends AbstractReentrantLock {
@@ -29,7 +35,7 @@ public class ZooKeeperLock extends AbstractReentrantLock {
 	private Long mySeq = null;
 	private boolean isLocked = false;
 	
-	private final SynchronousQueue<byte[]> queue = new SynchronousQueue<byte[]>(true);
+	private final BlockingQueue<byte[]> queue = new ArrayBlockingQueue<byte[]>(1);
 	
 	
 	public ZooKeeperLock(ZooKeeper zk, String nodePath, String key) throws LockException {
@@ -93,6 +99,7 @@ public class ZooKeeperLock extends AbstractReentrantLock {
 		}
 		
 		startTs = System.currentTimeMillis();
+		this.queue.clear(); // 清空queue，以防前一次获取锁超时退出后，watcher收到事件通知仍向queue里写入，造成queue不为空
 		if (!this.ifNotFirstThenAddWatcher()) {
 			if (waitTimeMillis > 0) {
 				waitTimeMillis -= System.currentTimeMillis() - startTs;
@@ -136,19 +143,18 @@ public class ZooKeeperLock extends AbstractReentrantLock {
 		
 		if (childrenNames.size() == 1) {
 			// 子节点只有自己
-			mySeq = this.parseSessionIdAndSeqForNode(childrenNames.get(0))[1];
+			NodeInfo ni = this.parseNodeInfo(childrenNames.get(0));
+			this.mySeq = ni.getSeq();
 			return null;
 		}
 		
 		TreeMap<Long, String> treeMap = new TreeMap<Long, String>();
 		mySeq = null;
 		for (String name : childrenNames) {
-			long[] ll = this.parseSessionIdAndSeqForNode(name);
-			long sessionId = ll[0];
-			long seq = ll[1];
-			treeMap.put(seq, name);
-			if (sessionId == zk.getSessionId()) {
-				mySeq = seq;
+			NodeInfo ni = this.parseNodeInfo(name);
+			treeMap.put(ni.getSeq(), name);
+			if (ni.getSessionId() == zk.getSessionId()) {
+				this.mySeq = ni.getSeq();
 			}
 		}
 		if (mySeq == null) {
@@ -198,9 +204,34 @@ public class ZooKeeperLock extends AbstractReentrantLock {
 		return String.format("%s/%s", this.node, name);
 	}
 	
-	private long[] parseSessionIdAndSeqForNode(String path) {
+	private NodeInfo parseNodeInfo(String path) {
+		// path format: "${parent}/session-${zk_sessionid}-${seq}"
 		String[] ss = path.split("-");
-		return new long[] {Long.parseLong(ss[ss.length - 2]), Long.parseLong(ss[ss.length - 1])};
+		NodeInfo ni = new NodeInfo();
+		ni.setSessionId(Long.parseLong(ss[ss.length - 2]));
+		ni.setSeq(Long.parseLong(ss[ss.length - 1]));
+		return ni;
+	}
+	
+	private static class NodeInfo {
+		private long sessionId;
+		private long seq;
+
+		public long getSessionId() {
+			return sessionId;
+		}
+
+		public void setSessionId(long sessionId) {
+			this.sessionId = sessionId;
+		}
+
+		public long getSeq() {
+			return seq;
+		}
+
+		public void setSeq(long seq) {
+			this.seq = seq;
+		}
 	}
 
 	private class NodeWatcher implements Watcher {

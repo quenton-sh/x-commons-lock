@@ -134,6 +134,12 @@ public abstract class AbstractReentrantLock implements SimpleLock {
 		return reentrantLock.isHeldByCurrentThread();
 	}
 	
+	/**
+	 * 获取全局锁
+	 * @param waitTimeMillis
+	 * @return true:获取成功; false:超时
+	 * @throws Exception
+	 */
 	protected abstract boolean lockGlobal(long waitTimeMillis) throws Exception;
 	
 	protected abstract void unlockGlobal() throws Exception;

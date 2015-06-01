@@ -17,14 +17,14 @@ public class RedisLockTestCommons {
 	protected static final int PORT = 6379;
 	
 
-	protected static void _init(long autoReleaseTimeMillis) {
+	protected static void _init(int autoReleaseTimeMillis, int retryMinDelayMillis, int retryMaxDelayMillis) {
 		DOMConfigurator.configure(RedisLockTestCommons.class.getResource("/log4j.xml").getPath());
 		JedisPoolConfig config = new JedisPoolConfig();
 		config.setMaxTotal(5);
 		config.setMaxIdle(5);
 		config.setMinIdle(5);
 		jedisPool = new JedisPool(config, HOST, PORT);
-		lock = new RedisLock(jedisPool, PASSWORD, "testkey", autoReleaseTimeMillis);
+		lock = new RedisLock(jedisPool, PASSWORD, "testkey", autoReleaseTimeMillis, retryMinDelayMillis, retryMaxDelayMillis);
 		// 激活池中连接
 		activatePool();
 	}

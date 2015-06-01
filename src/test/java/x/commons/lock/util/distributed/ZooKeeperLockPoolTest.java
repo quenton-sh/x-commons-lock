@@ -8,6 +8,7 @@ import org.junit.Test;
 
 import x.commons.lock.LockException;
 import x.commons.lock.SimpleLock;
+import x.commons.lock.distributed.ZooKeeperLockPool;
 import x.commons.lock.distributed.ZooKeeperLockTestCommons;
 
 public class ZooKeeperLockPoolTest extends ZooKeeperLockTestCommons {

@@ -11,10 +11,12 @@ public class RedisLockGlobalTest extends RedisLockTestCommons {
 	public static void main(String[] args) throws Exception {
 		// init
 		String name = args[0];
-		long autoReleaseTimeMillis = Long.parseLong(args[1]);
-		long sleepTime = Long.parseLong(args[2]);
-		long waitTimeout = Long.parseLong(args[3]);
-		_init(autoReleaseTimeMillis);
+		int autoReleaseTimeMillis = Integer.parseInt(args[1]);
+		int retryMinDelayMillis = Integer.parseInt(args[2]);
+		int retryMaxDelayMillis = Integer.parseInt(args[3]);
+		long sleepTime = Long.parseLong(args[4]);
+		long waitTimeout = Long.parseLong(args[5]);
+		_init(autoReleaseTimeMillis, retryMinDelayMillis, retryMaxDelayMillis);
 		
 		// do test
 		System.out.println(name + " start.");

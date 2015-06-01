@@ -11,11 +11,13 @@ import x.commons.lock.LockException;
 
 public class RedisLockTest extends RedisLockTestCommons {
 	
-	protected static long autoReleseTimeMillis = 10000;
+	protected static int autoReleaseTimeMillis = 10000;
+	protected static int retryMinDelayMillis = 5;
+	protected static int retryMaxDelayMillis = 10;
 	
 	@BeforeClass
 	public static void init() throws Exception {
-		_init(autoReleseTimeMillis);
+		_init(autoReleaseTimeMillis, retryMinDelayMillis, retryMaxDelayMillis);
 	}
 	
 	@AfterClass

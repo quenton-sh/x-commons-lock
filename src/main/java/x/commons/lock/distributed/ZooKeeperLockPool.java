@@ -1,10 +1,9 @@
-package x.commons.lock.util.distributed;
+package x.commons.lock.distributed;
 
 import org.apache.zookeeper.ZooKeeper;
 
 import x.commons.lock.LockException;
 import x.commons.lock.SimpleLock;
-import x.commons.lock.distributed.ZooKeeperLock;
 
 
 public class ZooKeeperLockPool extends AbstractLockPool {

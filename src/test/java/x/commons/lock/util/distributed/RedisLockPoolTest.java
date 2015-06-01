@@ -8,15 +8,18 @@ import org.junit.Test;
 
 import x.commons.lock.LockException;
 import x.commons.lock.SimpleLock;
+import x.commons.lock.distributed.RedisLockPool;
 import x.commons.lock.distributed.RedisLockTestCommons;
 
 public class RedisLockPoolTest extends RedisLockTestCommons {
 	
 	private static int autoReleaseTimeMillis = 30000;
+	private static int retryMinDelayMillis = 5;
+	private static int retryMaxDelayMillis = 10;
 	
 	@BeforeClass
 	public static void init() throws Exception {
-		_init(autoReleaseTimeMillis);
+		_init(autoReleaseTimeMillis, retryMinDelayMillis, retryMaxDelayMillis);
 	}
 	
 	@AfterClass
@@ -26,7 +29,7 @@ public class RedisLockPoolTest extends RedisLockTestCommons {
 
 	@Test
 	public void getLock() throws LockException {
-		RedisLockPool sug = new RedisLockPool(jedisPool, PASSWORD, autoReleaseTimeMillis, 1);
+		RedisLockPool sug = new RedisLockPool(1, jedisPool, PASSWORD, autoReleaseTimeMillis, retryMinDelayMillis, retryMaxDelayMillis);
 		
 		SimpleLock lock1 = sug.getLock("key1");
 		SimpleLock lock2 = sug.getLock("key2");
@@ -35,7 +38,7 @@ public class RedisLockPoolTest extends RedisLockTestCommons {
 		SimpleLock anotherLock1 = sug.getLock("key1");
 		assertTrue(lock1 != anotherLock1);
 		
-		sug = new RedisLockPool(jedisPool, PASSWORD, autoReleaseTimeMillis, 5);
+		sug = new RedisLockPool(5, jedisPool, PASSWORD, autoReleaseTimeMillis, retryMinDelayMillis, retryMaxDelayMillis);
 		lock1 = sug.getLock("key1");
 		lock2 = sug.getLock("key2");
 		assertTrue(lock1 != lock2);
@@ -49,7 +52,7 @@ public class RedisLockPoolTest extends RedisLockTestCommons {
 	 */
 	@Test
 	public void test1() throws Exception {
-		RedisLockPool sug = new RedisLockPool(jedisPool, PASSWORD, autoReleaseTimeMillis, 5);
+		RedisLockPool sug = new RedisLockPool(5, jedisPool, PASSWORD, autoReleaseTimeMillis, retryMinDelayMillis, retryMaxDelayMillis);
 		
 		// R1应该不阻塞R2
 		Thread t1 = new Thread(new TestRunnable("R1", "key1", 4000, sug));
@@ -70,7 +73,7 @@ public class RedisLockPoolTest extends RedisLockTestCommons {
 	 */
 	@Test
 	public void test2() throws Exception {
-		RedisLockPool sug = new RedisLockPool(jedisPool, PASSWORD, autoReleaseTimeMillis, 5);
+		RedisLockPool sug = new RedisLockPool(5, jedisPool, PASSWORD, autoReleaseTimeMillis, retryMinDelayMillis, retryMaxDelayMillis);
 		
 		// R1应该阻塞住R2
 		Thread t1 = new Thread(new TestRunnable("R3", "key1", 4000, sug));

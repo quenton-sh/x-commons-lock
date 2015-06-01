@@ -9,27 +9,28 @@ import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.Transaction;
 
+/**
+ * 使用随机延时重试策略的Redis分布式锁
+ * <p>非公平锁</p>
+ * <p>锁被持有时长达到超时时间后会自动释放</p>
+ * <p>尝试获取锁时等待超时则获取失败</p>
+ * 
+ * @NotThreadSafe
+ * @author Quenton
+ *
+ */
 public class RedisLock extends AbstractReentrantLock {
 	
 	private final JedisPool jedisPool;
 	private final String password;
 	private final String key;
-	private final long autoReleaseTimeMillis;
+	private final int autoReleaseTimeMillis;
 	private final int retryMinDelayMillis;
 	private final int retryMaxDelayMillis;
 	private final Random random = new Random();
 	private final String id = UUID.randomUUID().toString();
 	
-	/**
-	 * 获取锁失败，重试的延时时间为5ms
-	 * @param jedisPool
-	 * @param password
-	 * @param key
-	 * @param autoReleaseTimeMillis
-	 */
-	public RedisLock(JedisPool jedisPool, String password, String key, long autoReleaseTimeMillis) {
-		this(jedisPool, password, key, autoReleaseTimeMillis, 5, 5);
-	}
+	private boolean isLocked = false;
 	
 	/**
 	 * 
@@ -40,7 +41,7 @@ public class RedisLock extends AbstractReentrantLock {
 	 * @param retryDelayMillis 获取锁失败，重试的延时时间下限(ms)
 	 * @param retryMaxDelayMillis 获取锁失败，重试的延时时间上限(ms)
 	 */
-	public RedisLock(JedisPool jedisPool, String password, String key, long autoReleaseTimeMillis, int retryMinDelayMillis, int retryMaxDelayMillis) {
+	public RedisLock(JedisPool jedisPool, String password, String key, int autoReleaseTimeMillis, int retryMinDelayMillis, int retryMaxDelayMillis) {
 		if (retryMaxDelayMillis < retryMinDelayMillis) {
 			throw new IllegalArgumentException("The value of 'retryMaxDelayMillis' must be greater than or equal to that of 'retryMinDelayMillis'.");
 		}
@@ -57,26 +58,42 @@ public class RedisLock extends AbstractReentrantLock {
 	
 	@Override
 	protected boolean lockGlobal(long maxWaitTimeMillis) throws Exception {
+		if (isLocked) {
+			throw new IllegalStateException("Already locked!");
+		}
 		Jedis jedis = null;
 		try {
 			jedis = this.getJedis();
-			long waitTimeMillis  = maxWaitTimeMillis;
+			
+//			if (maxWaitTimeMillis > 0) {
+//				logger.debug(String.format("Thread %d is trying to acquire the global lock: wait time left %d milliseconds.", Thread.currentThread().getId(), maxWaitTimeMillis));
+//			}
+			long startTs = System.currentTimeMillis();
+			
 			boolean acquired = false;
 			do {
-				long startTs = System.currentTimeMillis();
 				String ret = jedis.set(this.key, this.id, "NX", "PX", this.autoReleaseTimeMillis); // set if not exist
 				acquired = "OK".equals(ret);
 				if (acquired) {
+					// 已获得全局锁
+					isLocked = true;
+					logger.debug(String.format("Thread %d just acquired the global lock.", Thread.currentThread().getId()));
 					return true;
 				}
-				if (waitTimeMillis > 0) {
-					waitTimeMillis -= System.currentTimeMillis() - startTs;
-					if (waitTimeMillis <= 0) {
+				
+				long ellapsed = System.currentTimeMillis() - startTs;
+				long waitTimeLeft = maxWaitTimeMillis - ellapsed;
+//				long waitTimeLeftPrint = waitTimeLeft < 0 ? 0 : waitTimeLeft;
+				if (maxWaitTimeMillis > 0) {
+//					logger.debug(String.format("Thread %d is trying to acquire the global lock: wait time left %d milliseconds.", Thread.currentThread().getId(), waitTimeLeftPrint));
+					if (waitTimeLeft <= 0) {
 						// 超时
 						return false;
 					}
 				}
+				
 				long retryDelayMillis = this.getRetryDelayMillis();
+				logger.debug(String.format("Thread %d is trying to acquire the global lock: retry in %d milliseconds.", Thread.currentThread().getId(), retryDelayMillis));
 				Thread.sleep(retryDelayMillis);
 			} while(true);
 		} finally {
@@ -86,6 +103,9 @@ public class RedisLock extends AbstractReentrantLock {
 	
 	@Override
 	protected void unlockGlobal() throws Exception {
+		if (!isLocked) {
+			throw new IllegalStateException("Already unlocked!");
+		}
 		Jedis jedis = null;
 		try {
 			jedis = this.getJedis();
@@ -97,6 +117,7 @@ public class RedisLock extends AbstractReentrantLock {
 				t.del(this.key);
 			}
 			t.exec(); // 无需检查结果，事务失败表示锁已过期，或已被其他进程持有
+			isLocked = false;
 		} finally {
 			IOUtils.closeQuietly(jedis);
 		}
@@ -106,7 +127,7 @@ public class RedisLock extends AbstractReentrantLock {
 		if (this.retryMinDelayMillis == this.retryMaxDelayMillis) {
 			return this.retryMinDelayMillis;
 		} else {
-			return this.retryMinDelayMillis + this.random.nextInt(this.retryMaxDelayMillis - this.retryMinDelayMillis);
+			return this.retryMinDelayMillis + this.random.nextInt(this.retryMaxDelayMillis - this.retryMinDelayMillis + 1);
 		}
 	}
 	
