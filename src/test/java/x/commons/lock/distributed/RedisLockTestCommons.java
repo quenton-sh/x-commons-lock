@@ -12,9 +12,10 @@ public class RedisLockTestCommons {
 	protected static JedisPool jedisPool;
 	protected static RedisLock lock;
 	
-	protected static final String PASSWORD = "redis123";
 	protected static final String HOST = "127.0.0.1";
 	protected static final int PORT = 6379;
+	protected static final int TIMEOUT = 2000;
+	protected static final String PASSWORD = "redis123";
 	
 
 	protected static void _init(int autoReleaseTimeMillis, int retryMinDelayMillis, int retryMaxDelayMillis) {
@@ -23,8 +24,8 @@ public class RedisLockTestCommons {
 		config.setMaxTotal(5);
 		config.setMaxIdle(5);
 		config.setMinIdle(5);
-		jedisPool = new JedisPool(config, HOST, PORT);
-		lock = new RedisLock(jedisPool, PASSWORD, "testkey", autoReleaseTimeMillis, retryMinDelayMillis, retryMaxDelayMillis);
+		jedisPool = new JedisPool(config, HOST, PORT, TIMEOUT, PASSWORD);
+		lock = new RedisLock(jedisPool, "testkey", autoReleaseTimeMillis, retryMinDelayMillis, retryMaxDelayMillis);
 		// 激活池中连接
 		activatePool();
 	}

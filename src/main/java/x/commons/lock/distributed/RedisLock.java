@@ -22,7 +22,6 @@ import redis.clients.jedis.Transaction;
 public class RedisLock extends AbstractReentrantLock {
 	
 	private final JedisPool jedisPool;
-	private final String password;
 	private final String key;
 	private final int autoReleaseTimeMillis;
 	private final int retryMinDelayMillis;
@@ -35,13 +34,12 @@ public class RedisLock extends AbstractReentrantLock {
 	/**
 	 * 
 	 * @param jedisPool
-	 * @param password
 	 * @param key
 	 * @param autoReleaseTimeMillis
 	 * @param retryDelayMillis 获取锁失败，重试的延时时间下限(ms)
 	 * @param retryMaxDelayMillis 获取锁失败，重试的延时时间上限(ms)
 	 */
-	public RedisLock(JedisPool jedisPool, String password, String key, int autoReleaseTimeMillis, int retryMinDelayMillis, int retryMaxDelayMillis) {
+	public RedisLock(JedisPool jedisPool, String key, int autoReleaseTimeMillis, int retryMinDelayMillis, int retryMaxDelayMillis) {
 		if (retryMaxDelayMillis < retryMinDelayMillis) {
 			throw new IllegalArgumentException("The value of 'retryMaxDelayMillis' must be greater than or equal to that of 'retryMinDelayMillis'.");
 		}
@@ -49,7 +47,6 @@ public class RedisLock extends AbstractReentrantLock {
 			throw new IllegalArgumentException("Neither 'retryMinDelayMillis' nor 'retryMaxDelayMillis' could be less than or equal to zero.");
 		}
 		this.jedisPool = jedisPool;
-		this.password = password;
 		this.key = key;
 		this.autoReleaseTimeMillis = autoReleaseTimeMillis;
 		this.retryMinDelayMillis = retryMinDelayMillis;
@@ -132,10 +129,6 @@ public class RedisLock extends AbstractReentrantLock {
 	}
 	
 	private Jedis getJedis() {
-		Jedis jedis = this.jedisPool.getResource();
-		if (this.password != null) {
-			jedis.auth(this.password);
-		}
-		return jedis;
+		return this.jedisPool.getResource();
 	}
 }

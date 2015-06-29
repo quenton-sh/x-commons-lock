@@ -30,7 +30,7 @@ public class RedisLockTest extends RedisLockTestCommons {
 		@SuppressWarnings("unused")
 		RedisLock sug = null;
 		try {
-			sug = new RedisLock(null, null, null, 5000, 3, 1);
+			sug = new RedisLock(null, null, 5000, 3, 1);
 			fail();
 		} catch (IllegalArgumentException e) {
 			// pass
@@ -38,7 +38,7 @@ public class RedisLockTest extends RedisLockTestCommons {
 		}
 		
 		try {
-			sug = new RedisLock(null, null, null, 5000, 0, 0);
+			sug = new RedisLock(null, null, 5000, 0, 0);
 			fail();
 		} catch (IllegalArgumentException e) {
 			// pass
@@ -46,7 +46,7 @@ public class RedisLockTest extends RedisLockTestCommons {
 		}
 		
 		try {
-			sug = new RedisLock(null, null, null, 5000, -1, -1);
+			sug = new RedisLock(null, null, 5000, -1, -1);
 			fail();
 		} catch (IllegalArgumentException e) {
 			// pass
