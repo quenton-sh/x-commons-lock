@@ -95,14 +95,16 @@ public abstract class AbstractReentrantLock implements SimpleLock {
 		}
 		// 只有解全局锁成功才解本地锁
 		try {
+			// 本地锁被多次重入的情况下，仅对本地锁减少重入次数，不对全局锁做改动
 			if (reentrantLock.getHoldCount() <= 1) {
-				// 本地锁被多次重入的情况下，仅对本地锁减少重入次数，不对全局锁做改动
-				logger.debug(String.format("Thread %d try to release the global lock...", Thread.currentThread().getId()));
-				this.unlockGlobal();
-				logger.debug(String.format("Thread %d released the global lock.", Thread.currentThread().getId()));
-				
-				globalLockStatus.remove();
-				logger.debug(String.format("Thread %d doesn't cache its global lock any more.", Thread.currentThread().getId()));
+				if (globalLockStatus.get() != null) {
+					logger.debug(String.format("Thread %d try to release the global lock...", Thread.currentThread().getId()));
+					this.unlockGlobal();
+					logger.debug(String.format("Thread %d released the global lock.", Thread.currentThread().getId()));
+					
+					globalLockStatus.remove();
+					logger.debug(String.format("Thread %d doesn't cache its global lock any more.", Thread.currentThread().getId()));
+				}
 			}
 			this.unlockLocalWithLogging();
 		} catch (Exception e) {
