@@ -2,12 +2,14 @@ package x.commons.lock.distributed;
 
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.Callable;
 
 import org.apache.commons.io.IOUtils;
 
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.Transaction;
+import x.commons.util.failover.RetrySupport;
 
 /**
  * 使用随机延时重试策略的Redis分布式锁
@@ -26,6 +28,9 @@ public class RedisLock extends AbstractReentrantLock {
 	private final int autoReleaseTimeMillis;
 	private final int retryMinDelayMillis;
 	private final int retryMaxDelayMillis;
+	private final int failRetryCount; // 失败重试次数
+	private final int failRetryIntervalMillis; // 失败多次重试之间的间隔时间（毫秒）
+	
 	private final Random random = new Random();
 	private final String id = UUID.randomUUID().toString();
 	
@@ -39,7 +44,9 @@ public class RedisLock extends AbstractReentrantLock {
 	 * @param retryDelayMillis 获取锁失败，重试的延时时间下限(ms)
 	 * @param retryMaxDelayMillis 获取锁失败，重试的延时时间上限(ms)
 	 */
-	public RedisLock(JedisPool jedisPool, String key, int autoReleaseTimeMillis, int retryMinDelayMillis, int retryMaxDelayMillis) {
+	public RedisLock(JedisPool jedisPool, String key, 
+			int autoReleaseTimeMillis, int retryMinDelayMillis, int retryMaxDelayMillis,
+			int failRetryCount, int failRetryIntervalMillis) {
 		if (retryMaxDelayMillis < retryMinDelayMillis) {
 			throw new IllegalArgumentException("The value of 'retryMaxDelayMillis' must be greater than or equal to that of 'retryMinDelayMillis'.");
 		}
@@ -51,13 +58,25 @@ public class RedisLock extends AbstractReentrantLock {
 		this.autoReleaseTimeMillis = autoReleaseTimeMillis;
 		this.retryMinDelayMillis = retryMinDelayMillis;
 		this.retryMaxDelayMillis = retryMaxDelayMillis;
+		this.failRetryCount = failRetryCount;
+		this.failRetryIntervalMillis = failRetryIntervalMillis;
 	}
 	
 	@Override
-	protected boolean lockGlobal(long maxWaitTimeMillis) throws Exception {
+	protected boolean lockGlobal(final long maxWaitTimeMillis) throws Exception {
 		if (isLocked) {
 			throw new IllegalStateException("Already locked!");
 		}
+		return new RetrySupport(this.failRetryCount, this.failRetryIntervalMillis)
+				.callWithRetry(new Callable<Boolean>() {
+					@Override
+					public Boolean call() throws Exception {
+						return doLockGlobal(maxWaitTimeMillis);
+					}
+				});
+	}
+	
+	private boolean doLockGlobal(long maxWaitTimeMillis) throws Exception {
 		Jedis jedis = null;
 		try {
 			jedis = this.getJedis();
@@ -103,6 +122,17 @@ public class RedisLock extends AbstractReentrantLock {
 		if (!isLocked) {
 			throw new IllegalStateException("Already unlocked!");
 		}
+		new RetrySupport(this.failRetryCount, this.failRetryIntervalMillis)
+				.callWithRetry(new Callable<Void>() {
+					@Override
+					public Void call() throws Exception {
+						doUnlockGlobal();
+						return null;
+					}
+				});
+	}
+	
+	private void doUnlockGlobal() throws Exception {
 		Jedis jedis = null;
 		try {
 			jedis = this.getJedis();

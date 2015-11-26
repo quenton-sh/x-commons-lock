@@ -10,20 +10,27 @@ public class RedisLockPool extends AbstractLockPool {
 	private final int autoReleaseTimeMillis;
 	private final int retryMinDelayMillis;
 	private final int retryMaxDelayMillis;
+	private final int failRetryCount; // 失败重试次数
+	private final int failRetryIntervalMillis; // 失败多次重试之间的间隔时间（毫秒）
 
 	public RedisLockPool(int size, JedisPool jedisPool,
 			int autoReleaseTimeMillis, int retryMinDelayMillis,
-			int retryMaxDelayMillis) {
+			int retryMaxDelayMillis,
+			int failRetryCount, int failRetryIntervalMillis) {
 		super(size);
 		this.jedisPool = jedisPool;
 		this.autoReleaseTimeMillis = autoReleaseTimeMillis;
 		this.retryMinDelayMillis = retryMinDelayMillis;
 		this.retryMaxDelayMillis = retryMaxDelayMillis;
+		this.failRetryCount = failRetryCount;
+		this.failRetryIntervalMillis = failRetryIntervalMillis;
 	}
 
 	@Override
 	protected SimpleLock newLock(String key) throws LockException {
-		return new RedisLock(jedisPool, key, autoReleaseTimeMillis, retryMinDelayMillis, retryMaxDelayMillis);
+		return new RedisLock(jedisPool, key, autoReleaseTimeMillis, 
+				retryMinDelayMillis, retryMaxDelayMillis,
+				failRetryCount, failRetryIntervalMillis);
 	}
 
 }

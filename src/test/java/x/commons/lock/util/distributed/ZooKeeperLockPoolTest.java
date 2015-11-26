@@ -4,13 +4,16 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.FixMethodOrder;
 import org.junit.Test;
+import org.junit.runners.MethodSorters;
 
 import x.commons.lock.LockException;
 import x.commons.lock.SimpleLock;
 import x.commons.lock.distributed.ZooKeeperLockPool;
 import x.commons.lock.distributed.ZooKeeperLockTestCommons;
 
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class ZooKeeperLockPoolTest extends ZooKeeperLockTestCommons {
 	
 	private static String nodePath = "/tmp/locktest";

@@ -5,10 +5,13 @@ import static org.junit.Assert.fail;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.FixMethodOrder;
 import org.junit.Test;
+import org.junit.runners.MethodSorters;
 
 import x.commons.lock.LockException;
 
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class ZookeeperLockTest extends ZooKeeperLockTestCommons {
 	
 	private static String nodePath = "/tmp/locktest";

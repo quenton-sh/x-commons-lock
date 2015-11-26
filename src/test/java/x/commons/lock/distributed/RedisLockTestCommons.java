@@ -18,14 +18,18 @@ public class RedisLockTestCommons {
 	protected static final String PASSWORD = "redis123";
 	
 
-	protected static void _init(int autoReleaseTimeMillis, int retryMinDelayMillis, int retryMaxDelayMillis) {
+	protected static void _init(int autoReleaseTimeMillis, 
+			int retryMinDelayMillis, int retryMaxDelayMillis,
+			int failRetryCount, int failRetryIntervalMillis) {
 		DOMConfigurator.configure(RedisLockTestCommons.class.getResource("/log4j.xml").getPath());
 		JedisPoolConfig config = new JedisPoolConfig();
 		config.setMaxTotal(5);
 		config.setMaxIdle(5);
 		config.setMinIdle(5);
 		jedisPool = new JedisPool(config, HOST, PORT, TIMEOUT, PASSWORD);
-		lock = new RedisLock(jedisPool, "testkey", autoReleaseTimeMillis, retryMinDelayMillis, retryMaxDelayMillis);
+		lock = new RedisLock(jedisPool, "testkey", 
+				autoReleaseTimeMillis, retryMinDelayMillis, retryMaxDelayMillis,
+				failRetryCount, failRetryIntervalMillis);
 		// 激活池中连接
 		activatePool();
 	}

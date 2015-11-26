@@ -14,9 +14,12 @@ public class RedisLockGlobalTest extends RedisLockTestCommons {
 		int autoReleaseTimeMillis = Integer.parseInt(args[1]);
 		int retryMinDelayMillis = Integer.parseInt(args[2]);
 		int retryMaxDelayMillis = Integer.parseInt(args[3]);
+		int failRetryCount = 1;
+		int failRetryIntervalMillis = 1;
 		long sleepTime = Long.parseLong(args[4]);
 		long waitTimeout = Long.parseLong(args[5]);
-		_init(autoReleaseTimeMillis, retryMinDelayMillis, retryMaxDelayMillis);
+		_init(autoReleaseTimeMillis, retryMinDelayMillis, retryMaxDelayMillis,
+				failRetryCount, failRetryIntervalMillis);
 		
 		// do test
 		System.out.println(name + " start.");

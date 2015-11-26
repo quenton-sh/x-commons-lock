@@ -5,19 +5,26 @@ import static org.junit.Assert.fail;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.FixMethodOrder;
 import org.junit.Test;
+import org.junit.runners.MethodSorters;
 
 import x.commons.lock.LockException;
 
+
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class RedisLockTest extends RedisLockTestCommons {
 	
 	protected static int autoReleaseTimeMillis = 10000;
 	protected static int retryMinDelayMillis = 5;
 	protected static int retryMaxDelayMillis = 10;
+	protected static int failRetryCount = 1;
+	protected static int failRetryIntervalMillis = 1;
 	
 	@BeforeClass
 	public static void init() throws Exception {
-		_init(autoReleaseTimeMillis, retryMinDelayMillis, retryMaxDelayMillis);
+		_init(autoReleaseTimeMillis, retryMinDelayMillis, retryMaxDelayMillis,
+				failRetryCount, failRetryIntervalMillis);
 	}
 	
 	@AfterClass
@@ -30,7 +37,7 @@ public class RedisLockTest extends RedisLockTestCommons {
 		@SuppressWarnings("unused")
 		RedisLock sug = null;
 		try {
-			sug = new RedisLock(null, null, 5000, 3, 1);
+			sug = new RedisLock(null, null, 5000, 3, 1, failRetryCount, failRetryIntervalMillis);
 			fail();
 		} catch (IllegalArgumentException e) {
 			// pass
@@ -38,7 +45,7 @@ public class RedisLockTest extends RedisLockTestCommons {
 		}
 		
 		try {
-			sug = new RedisLock(null, null, 5000, 0, 0);
+			sug = new RedisLock(null, null, 5000, 0, 0, failRetryCount, failRetryIntervalMillis);
 			fail();
 		} catch (IllegalArgumentException e) {
 			// pass
@@ -46,7 +53,7 @@ public class RedisLockTest extends RedisLockTestCommons {
 		}
 		
 		try {
-			sug = new RedisLock(null, null, 5000, -1, -1);
+			sug = new RedisLock(null, null, 5000, -1, -1, failRetryCount, failRetryIntervalMillis);
 			fail();
 		} catch (IllegalArgumentException e) {
 			// pass
