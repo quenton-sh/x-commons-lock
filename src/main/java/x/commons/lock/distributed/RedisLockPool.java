@@ -1,19 +1,20 @@
 package x.commons.lock.distributed;
 
-import redis.clients.jedis.JedisPool;
+import redis.clients.jedis.Jedis;
+import redis.clients.util.Pool;
 import x.commons.lock.LockException;
 import x.commons.lock.SimpleLock;
 
 public class RedisLockPool extends AbstractLockPool {
 	
-	private final JedisPool jedisPool;
+	private final Pool<Jedis> jedisPool;
 	private final int autoReleaseTimeMillis;
 	private final int retryMinDelayMillis;
 	private final int retryMaxDelayMillis;
 	private final int failRetryCount; // 失败重试次数
 	private final int failRetryIntervalMillis; // 失败多次重试之间的间隔时间（毫秒）
 
-	public RedisLockPool(int size, JedisPool jedisPool,
+	public RedisLockPool(int size, Pool<Jedis> jedisPool,
 			int autoReleaseTimeMillis, int retryMinDelayMillis,
 			int retryMaxDelayMillis,
 			int failRetryCount, int failRetryIntervalMillis) {

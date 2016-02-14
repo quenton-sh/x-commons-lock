@@ -6,16 +6,17 @@ import org.apache.log4j.xml.DOMConfigurator;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
+import redis.clients.util.Pool;
 
 public class RedisLockTestCommons {
 	
-	protected static JedisPool jedisPool;
+	protected static Pool<Jedis> jedisPool;
 	protected static RedisLock lock;
 	
 	protected static final String HOST = "127.0.0.1";
 	protected static final int PORT = 6379;
 	protected static final int TIMEOUT = 2000;
-	protected static final String PASSWORD = "redis123";
+	protected static final String PASSWORD = "redis&123";
 	
 
 	protected static void _init(int autoReleaseTimeMillis, 

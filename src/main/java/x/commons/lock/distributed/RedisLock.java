@@ -7,8 +7,8 @@ import java.util.concurrent.Callable;
 import org.apache.commons.io.IOUtils;
 
 import redis.clients.jedis.Jedis;
-import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.Transaction;
+import redis.clients.util.Pool;
 import x.commons.util.failover.RetrySupport;
 
 /**
@@ -23,7 +23,7 @@ import x.commons.util.failover.RetrySupport;
  */
 public class RedisLock extends AbstractReentrantLock {
 	
-	private final JedisPool jedisPool;
+	private final Pool<Jedis> jedisPool;
 	private final String key;
 	private final int autoReleaseTimeMillis;
 	private final int retryMinDelayMillis;
@@ -44,7 +44,7 @@ public class RedisLock extends AbstractReentrantLock {
 	 * @param retryDelayMillis 获取锁失败，重试的延时时间下限(ms)
 	 * @param retryMaxDelayMillis 获取锁失败，重试的延时时间上限(ms)
 	 */
-	public RedisLock(JedisPool jedisPool, String key, 
+	public RedisLock(Pool<Jedis> jedisPool, String key, 
 			int autoReleaseTimeMillis, int retryMinDelayMillis, int retryMaxDelayMillis,
 			int failRetryCount, int failRetryIntervalMillis) {
 		if (retryMaxDelayMillis < retryMinDelayMillis) {
