@@ -4,10 +4,11 @@ import redis.clients.jedis.Jedis;
 import redis.clients.util.Pool;
 import x.commons.lock.LockException;
 import x.commons.lock.SimpleLock;
+import x.commons.util.Provider;
 
 public class RedisLockPool extends AbstractLockPool {
 	
-	private final Pool<Jedis> jedisPool;
+	private final Provider<Pool<Jedis>> jedisPoolProvider;
 	private final int autoReleaseTimeMillis;
 	private final int retryMinDelayMillis;
 	private final int retryMaxDelayMillis;
@@ -18,8 +19,18 @@ public class RedisLockPool extends AbstractLockPool {
 			int autoReleaseTimeMillis, int retryMinDelayMillis,
 			int retryMaxDelayMillis,
 			int failRetryCount, int failRetryIntervalMillis) {
+		this(size, new JedisPoolProvider(jedisPool), 
+				autoReleaseTimeMillis, retryMinDelayMillis, 
+				retryMaxDelayMillis,
+				failRetryCount, failRetryIntervalMillis);
+	}
+	
+	public RedisLockPool(int size, Provider<Pool<Jedis>> jedisPoolProvider,
+			int autoReleaseTimeMillis, int retryMinDelayMillis,
+			int retryMaxDelayMillis,
+			int failRetryCount, int failRetryIntervalMillis) {
 		super(size);
-		this.jedisPool = jedisPool;
+		this.jedisPoolProvider = jedisPoolProvider;
 		this.autoReleaseTimeMillis = autoReleaseTimeMillis;
 		this.retryMinDelayMillis = retryMinDelayMillis;
 		this.retryMaxDelayMillis = retryMaxDelayMillis;
@@ -29,7 +40,7 @@ public class RedisLockPool extends AbstractLockPool {
 
 	@Override
 	protected SimpleLock newLock(String key) throws LockException {
-		return new RedisLock(jedisPool, key, autoReleaseTimeMillis, 
+		return new RedisLock(jedisPoolProvider, key, autoReleaseTimeMillis, 
 				retryMinDelayMillis, retryMaxDelayMillis,
 				failRetryCount, failRetryIntervalMillis);
 	}

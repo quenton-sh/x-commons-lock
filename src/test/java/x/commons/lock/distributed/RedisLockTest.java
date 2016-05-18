@@ -9,6 +9,8 @@ import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;
 
+import redis.clients.jedis.Jedis;
+import redis.clients.util.Pool;
 import x.commons.lock.LockException;
 
 
@@ -36,8 +38,9 @@ public class RedisLockTest extends RedisLockTestCommons {
 	public void testConstruct() {
 		@SuppressWarnings("unused")
 		RedisLock sug = null;
+		Pool<Jedis> pool = null;
 		try {
-			sug = new RedisLock(null, null, 5000, 3, 1, failRetryCount, failRetryIntervalMillis);
+			sug = new RedisLock(pool, null, 5000, 3, 1, failRetryCount, failRetryIntervalMillis);
 			fail();
 		} catch (IllegalArgumentException e) {
 			// pass
@@ -45,7 +48,7 @@ public class RedisLockTest extends RedisLockTestCommons {
 		}
 		
 		try {
-			sug = new RedisLock(null, null, 5000, 0, 0, failRetryCount, failRetryIntervalMillis);
+			sug = new RedisLock(pool, null, 5000, 0, 0, failRetryCount, failRetryIntervalMillis);
 			fail();
 		} catch (IllegalArgumentException e) {
 			// pass
@@ -53,7 +56,7 @@ public class RedisLockTest extends RedisLockTestCommons {
 		}
 		
 		try {
-			sug = new RedisLock(null, null, 5000, -1, -1, failRetryCount, failRetryIntervalMillis);
+			sug = new RedisLock(pool, null, 5000, -1, -1, failRetryCount, failRetryIntervalMillis);
 			fail();
 		} catch (IllegalArgumentException e) {
 			// pass

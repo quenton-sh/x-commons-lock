@@ -9,6 +9,7 @@ import org.apache.commons.io.IOUtils;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Transaction;
 import redis.clients.util.Pool;
+import x.commons.util.Provider;
 import x.commons.util.failover.RetrySupport;
 
 /**
@@ -23,7 +24,7 @@ import x.commons.util.failover.RetrySupport;
  */
 public class RedisLock extends AbstractReentrantLock {
 	
-	private final Pool<Jedis> jedisPool;
+	private final Provider<Pool<Jedis>> jedisPoolProvider;
 	private final String key;
 	private final int autoReleaseTimeMillis;
 	private final int retryMinDelayMillis;
@@ -47,13 +48,29 @@ public class RedisLock extends AbstractReentrantLock {
 	public RedisLock(Pool<Jedis> jedisPool, String key, 
 			int autoReleaseTimeMillis, int retryMinDelayMillis, int retryMaxDelayMillis,
 			int failRetryCount, int failRetryIntervalMillis) {
+		this(new JedisPoolProvider(jedisPool), key, 
+				autoReleaseTimeMillis, retryMinDelayMillis, retryMaxDelayMillis,
+				failRetryCount, failRetryIntervalMillis);
+	}
+	
+	/**
+	 * 
+	 * @param jedisPoolProvider
+	 * @param key
+	 * @param autoReleaseTimeMillis
+	 * @param retryDelayMillis 获取锁失败，重试的延时时间下限(ms)
+	 * @param retryMaxDelayMillis 获取锁失败，重试的延时时间上限(ms)
+	 */
+	public RedisLock(Provider<Pool<Jedis>> jedisPoolProvider, String key, 
+			int autoReleaseTimeMillis, int retryMinDelayMillis, int retryMaxDelayMillis,
+			int failRetryCount, int failRetryIntervalMillis) {
 		if (retryMaxDelayMillis < retryMinDelayMillis) {
 			throw new IllegalArgumentException("The value of 'retryMaxDelayMillis' must be greater than or equal to that of 'retryMinDelayMillis'.");
 		}
 		if (retryMinDelayMillis <= 0 || retryMaxDelayMillis <= 0) {
 			throw new IllegalArgumentException("Neither 'retryMinDelayMillis' nor 'retryMaxDelayMillis' could be less than or equal to zero.");
 		}
-		this.jedisPool = jedisPool;
+		this.jedisPoolProvider = jedisPoolProvider;
 		this.key = key;
 		this.autoReleaseTimeMillis = autoReleaseTimeMillis;
 		this.retryMinDelayMillis = retryMinDelayMillis;
@@ -159,6 +176,6 @@ public class RedisLock extends AbstractReentrantLock {
 	}
 	
 	private Jedis getJedis() {
-		return this.jedisPool.getResource();
+		return this.jedisPoolProvider.get().getResource();
 	}
 }

@@ -5,13 +5,13 @@
 
 	<groupId>x.commons</groupId>
 	<artifactId>x-commons-lock</artifactId>
-	<version>1.5-SNAPSHOT</version>
+	<version>1.5</version>
 	<packaging>jar</packaging>
 
 	<scm>
 		<connection>scm:git:https://github.com/quenton-sh/x-commons-lock.git</connection>
 		<developerConnection>scm:git:https://github.com/quenton-sh/x-commons-lock.git</developerConnection>
-		<tag>HEAD</tag>
+		<tag>1.5</tag>
 	</scm>
 
 	<properties>
@@ -39,7 +39,7 @@
 		<dependency>
 			<groupId>x.commons</groupId>
 			<artifactId>x-commons-utils</artifactId>
-			<version>1.11</version>
+			<version>1.13</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.zookeeper</groupId>
