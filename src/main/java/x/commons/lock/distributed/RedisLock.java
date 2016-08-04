@@ -10,6 +10,7 @@ import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Transaction;
 import redis.clients.util.Pool;
 import x.commons.util.Provider;
+import x.commons.util.failover.RetryExceptionHandler;
 import x.commons.util.failover.RetrySupport;
 
 /**
@@ -31,6 +32,7 @@ public class RedisLock extends AbstractReentrantLock {
 	private final int retryMaxDelayMillis;
 	private final int failRetryCount; // 失败重试次数
 	private final int failRetryIntervalMillis; // 失败多次重试之间的间隔时间（毫秒）
+	private final RetryExceptionHandler retryExceptionHandler;
 	
 	private final Random random = new Random();
 	private final String id = UUID.randomUUID().toString();
@@ -50,7 +52,7 @@ public class RedisLock extends AbstractReentrantLock {
 			int failRetryCount, int failRetryIntervalMillis) {
 		this(new JedisPoolProvider(jedisPool), key, 
 				autoReleaseTimeMillis, retryMinDelayMillis, retryMaxDelayMillis,
-				failRetryCount, failRetryIntervalMillis);
+				failRetryCount, failRetryIntervalMillis, null);
 	}
 	
 	/**
@@ -64,6 +66,42 @@ public class RedisLock extends AbstractReentrantLock {
 	public RedisLock(Provider<Pool<Jedis>> jedisPoolProvider, String key, 
 			int autoReleaseTimeMillis, int retryMinDelayMillis, int retryMaxDelayMillis,
 			int failRetryCount, int failRetryIntervalMillis) {
+		this(jedisPoolProvider, key, 
+				autoReleaseTimeMillis, retryMinDelayMillis, retryMaxDelayMillis,
+				failRetryCount, failRetryIntervalMillis, null);
+	}
+	
+	/**
+	 * 
+	 * @param jedisPool
+	 * @param key
+	 * @param autoReleaseTimeMillis
+	 * @param retryDelayMillis 获取锁失败，重试的延时时间下限(ms)
+	 * @param retryMaxDelayMillis 获取锁失败，重试的延时时间上限(ms)
+	 * @param retryExceptionHandler 异常处理器，如果为null则使用默认异常处理机制
+	 */
+	public RedisLock(Pool<Jedis> jedisPool, String key, 
+			int autoReleaseTimeMillis, int retryMinDelayMillis, int retryMaxDelayMillis,
+			int failRetryCount, int failRetryIntervalMillis,
+			RetryExceptionHandler retryExceptionHandler) {
+		this(new JedisPoolProvider(jedisPool), key, 
+				autoReleaseTimeMillis, retryMinDelayMillis, retryMaxDelayMillis,
+				failRetryCount, failRetryIntervalMillis, retryExceptionHandler);
+	}
+	
+	/**
+	 * 
+	 * @param jedisPoolProvider
+	 * @param key
+	 * @param autoReleaseTimeMillis
+	 * @param retryDelayMillis 获取锁失败，重试的延时时间下限(ms)
+	 * @param retryMaxDelayMillis 获取锁失败，重试的延时时间上限(ms)
+	 * @param retryExceptionHandler 异常处理器，如果为null则使用默认异常处理机制
+	 */
+	public RedisLock(Provider<Pool<Jedis>> jedisPoolProvider, String key, 
+			int autoReleaseTimeMillis, int retryMinDelayMillis, int retryMaxDelayMillis,
+			int failRetryCount, int failRetryIntervalMillis,
+			RetryExceptionHandler retryExceptionHandler) {
 		if (retryMaxDelayMillis < retryMinDelayMillis) {
 			throw new IllegalArgumentException("The value of 'retryMaxDelayMillis' must be greater than or equal to that of 'retryMinDelayMillis'.");
 		}
@@ -77,6 +115,7 @@ public class RedisLock extends AbstractReentrantLock {
 		this.retryMaxDelayMillis = retryMaxDelayMillis;
 		this.failRetryCount = failRetryCount;
 		this.failRetryIntervalMillis = failRetryIntervalMillis;
+		this.retryExceptionHandler = retryExceptionHandler;
 	}
 	
 	@Override
@@ -84,7 +123,7 @@ public class RedisLock extends AbstractReentrantLock {
 		if (isLocked) {
 			throw new IllegalStateException("Already locked!");
 		}
-		return new RetrySupport(this.failRetryCount, this.failRetryIntervalMillis)
+		return new RetrySupport(this.failRetryCount, this.failRetryIntervalMillis, this.retryExceptionHandler)
 				.callWithRetry(new Callable<Boolean>() {
 					@Override
 					public Boolean call() throws Exception {
@@ -139,7 +178,7 @@ public class RedisLock extends AbstractReentrantLock {
 		if (!isLocked) {
 			throw new IllegalStateException("Already unlocked!");
 		}
-		new RetrySupport(this.failRetryCount, this.failRetryIntervalMillis)
+		new RetrySupport(this.failRetryCount, this.failRetryIntervalMillis, this.retryExceptionHandler)
 				.callWithRetry(new Callable<Void>() {
 					@Override
 					public Void call() throws Exception {

@@ -5,7 +5,7 @@
 
 	<groupId>x.commons</groupId>
 	<artifactId>x-commons-lock</artifactId>
-	<version>1.6-SNAPSHOT</version>
+	<version>1.6</version>
 	<packaging>jar</packaging>
 
 	<scm>
@@ -39,7 +39,7 @@
 		<dependency>
 			<groupId>x.commons</groupId>
 			<artifactId>x-commons-utils</artifactId>
-			<version>1.13</version>
+			<version>1.14.1</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.zookeeper</groupId>
