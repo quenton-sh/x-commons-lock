@@ -77,7 +77,7 @@ public class ZooKeeperLock extends AbstractReentrantLock {
 			if (stat == null) {
 				String createdNode = zk.create(path, null,
 						ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-				logger.info(String.format("Zookeeper persistent node '%s' created.", createdNode));
+				logger.info("Zookeeper persistent node '{}' created.", createdNode);
 			}
 		}
 	}
@@ -95,7 +95,7 @@ public class ZooKeeperLock extends AbstractReentrantLock {
 				null, 
 				ZooDefs.Ids.OPEN_ACL_UNSAFE, 
 				CreateMode.EPHEMERAL_SEQUENTIAL);
-		logger.debug(String.format("Zookeeper ephemeral node '%s' created.", createdNode));
+		logger.debug("Zookeeper ephemeral node '{}' created.", createdNode);
 		if (waitTimeMillis > 0) {
 			waitTimeMillis -= System.currentTimeMillis() - startTs;
 			if (waitTimeMillis <= 0) {
@@ -121,7 +121,7 @@ public class ZooKeeperLock extends AbstractReentrantLock {
 		}
 		// 已获得全局锁
 		isLocked = true;
-		logger.debug(String.format("Thread %d just acquired the global lock.", Thread.currentThread().getId()));
+		logger.debug("Thread {} just acquired the global lock.", Thread.currentThread().getId());
 		
 		return true;
 	}
@@ -179,12 +179,12 @@ public class ZooKeeperLock extends AbstractReentrantLock {
 	private void deleteNodeWithLogging(ZooKeeper zk, long seq) throws InterruptedException, KeeperException {
 		String node = this.buildPathForNode(zk.getSessionId(), seq);
 		zk.delete(node, -1);
-		logger.debug(String.format("Zookeeper ephemeral node '%s' deleted.", node));
+		logger.debug("Zookeeper ephemeral node '{}' deleted.", node);
 	}
 	
 	private void deleteNodeWithLogging(ZooKeeper zk, String node) throws InterruptedException, KeeperException {
 		zk.delete(node, -1);
-		logger.debug(String.format("Zookeeper ephemeral node '%s' deleted.", node));
+		logger.debug("Zookeeper ephemeral node '{}' deleted.", node);
 	}
 
 	@Override
@@ -252,9 +252,9 @@ public class ZooKeeperLock extends AbstractReentrantLock {
 		
 		@Override
 		public void process(WatchedEvent event) {
-			logger.debug(String.format(
-					"Event fired on path: '%s', state: '%s', type: '%s'.",
-					event.getPath(), event.getState().toString(), event.getType().toString()));
+			logger.debug(
+					"Event fired on path: '{}', state: '{}', type: '{}'.",
+					event.getPath(), event.getState().toString(), event.getType().toString());
 			if (event.getType() == org.apache.zookeeper.Watcher.Event.EventType.NodeDeleted) {
 				try {
 					if (ifNotFirstThenAddWatcher(this.zk)) {

@@ -138,7 +138,7 @@ public class RedisLock extends AbstractReentrantLock {
 			jedis = this.getJedis();
 			
 //			if (maxWaitTimeMillis > 0) {
-//				logger.debug(String.format("Thread %d is trying to acquire the global lock: wait time left %d milliseconds.", Thread.currentThread().getId(), maxWaitTimeMillis));
+//				logger.debug("Thread {} is trying to acquire the global lock: wait time left {} milliseconds.", Thread.currentThread().getId(), maxWaitTimeMillis);
 //			}
 			long startTs = System.currentTimeMillis();
 			
@@ -148,7 +148,7 @@ public class RedisLock extends AbstractReentrantLock {
 				long waitTimeLeft = maxWaitTimeMillis - ellapsed;
 //				long waitTimeLeftPrint = waitTimeLeft < 0 ? 0 : waitTimeLeft;
 				if (maxWaitTimeMillis > 0) {
-//					logger.debug(String.format("Thread %d is trying to acquire the global lock: wait time left %d milliseconds.", Thread.currentThread().getId(), waitTimeLeftPrint));
+//					logger.debug("Thread {} is trying to acquire the global lock: wait time left {} milliseconds.", Thread.currentThread().getId(), waitTimeLeftPrint);
 					if (waitTimeLeft <= 0) {
 						// 超时
 						return false;
@@ -160,12 +160,12 @@ public class RedisLock extends AbstractReentrantLock {
 				if (acquired) {
 					// 已获得全局锁
 					isLocked = true;
-					logger.debug(String.format("Thread %d just acquired the global lock.", Thread.currentThread().getId()));
+					logger.debug("Thread {} just acquired the global lock.", Thread.currentThread().getId());
 					return true;
 				}
 				
 				long retryDelayMillis = this.getRetryDelayMillis();
-				logger.debug(String.format("Thread %d is trying to acquire the global lock: retry in %d milliseconds.", Thread.currentThread().getId(), retryDelayMillis));
+				logger.debug("Thread {} is trying to acquire the global lock: retry in {} milliseconds.", Thread.currentThread().getId(), retryDelayMillis);
 				Thread.sleep(retryDelayMillis);
 			} while(true);
 		} finally {
