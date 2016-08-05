@@ -252,9 +252,8 @@ public class ZooKeeperLock extends AbstractReentrantLock {
 		
 		@Override
 		public void process(WatchedEvent event) {
-			logger.debug(
-					"Event fired on path: '{}', state: '{}', type: '{}'.",
-					event.getPath(), event.getState().toString(), event.getType().toString());
+			logger.debug("Event fired on path: '{}', state: '{}', type: '{}'.",
+					new Object[] {event.getPath(), event.getState().toString(), event.getType().toString()});
 			if (event.getType() == org.apache.zookeeper.Watcher.Event.EventType.NodeDeleted) {
 				try {
 					if (ifNotFirstThenAddWatcher(this.zk)) {
