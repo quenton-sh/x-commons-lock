@@ -37,7 +37,7 @@ public class RedisLock extends AbstractReentrantLock {
 	private final Random random = new Random();
 	private final String id = UUID.randomUUID().toString();
 	
-	private boolean isLocked = false;
+	private volatile boolean isLocked = false;
 	
 	/**
 	 * 
@@ -178,7 +178,8 @@ public class RedisLock extends AbstractReentrantLock {
 		if (!isLocked) {
 			throw new IllegalStateException("Already unlocked!");
 		}
-		new RetrySupport(this.failRetryCount, this.failRetryIntervalMillis, this.retryExceptionHandler)
+		try {
+			new RetrySupport(this.failRetryCount, this.failRetryIntervalMillis, this.retryExceptionHandler)
 				.callWithRetry(new Callable<Void>() {
 					@Override
 					public Void call() throws Exception {
@@ -186,6 +187,9 @@ public class RedisLock extends AbstractReentrantLock {
 						return null;
 					}
 				});
+		} finally {
+			this.isLocked = false;
+		}
 	}
 	
 	private void doUnlockGlobal() throws Exception {

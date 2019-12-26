@@ -33,8 +33,8 @@ public class ZooKeeperLock extends AbstractReentrantLock {
 	private final Provider<ZooKeeper> zkProvider;
 	private final String node;
 	
-	private Long mySeq = null;
-	private boolean isLocked = false;
+	private volatile Long mySeq = null;
+	private volatile boolean isLocked = false;
 	
 	private final BlockingQueue<byte[]> queue = new ArrayBlockingQueue<byte[]>(1);
 	
